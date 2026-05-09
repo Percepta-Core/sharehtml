@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, relative } from "node:path";
 import { downloadDocument } from "../api/client.js";
 
 function extractId(idOrUrl: string): string {
@@ -21,7 +21,14 @@ export const pullCmd = new Command("pull")
       console.log(`Downloading ${id}...`);
 
       const { filename, content } = await downloadDocument(id);
-      const outputPath = resolve(opts.output || filename);
+      const base = resolve(process.cwd());
+      const target = resolve(base, opts.output || filename);
+      const rel = relative(base, target);
+      if (rel.startsWith('..') || resolve(rel) === rel) {
+        console.error(`Error: Invalid output path`);
+        process.exit(1);
+      }
+      const outputPath = target;
 
       await writeFile(outputPath, content);
       console.log(`\nSaved to ${outputPath}`);
